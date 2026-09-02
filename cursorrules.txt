@@ -1,0 +1,19 @@
+Before building or editing any UI in this project, read DESIGN.md and follow it exactly.
+
+Non-negotiable design rules:
+- Font: Inter, weights 300/400/500 ONLY. Never use bold (600+). Emphasis is weight 500, color, or size.
+- Light mode only. Never build a dark mode.
+- Background parchment #FAF9F7; surfaces white #FFFFFF; body text charcoal #2D2D2D;
+  headings and primary buttons ink #1A1A2E; accent/links brass #B5935A; borders smoke #E4E2DE (1px hairlines).
+- Status colors: sage #3A7D5E success, amber #C07C2A warning, cinnabar #C0392B error/destructive.
+- Icons: Lucide only, stroke width 1.5, never filled. 20px inline, 24px standalone.
+- Uppercase only for small 12px labels (0.08em tracking). Everything else sentence case.
+- Metrics, IDs, and campaign/pipeline data use IBM Plex Mono (400).
+- Forbidden: gradients, glassmorphism, drop-shadow stacks, purple or electric blue, emoji,
+  exclamation marks, countdown/scarcity language, and any AI-forward or hype wording.
+- Motion: 150ms hover transitions; a single fade-up reveal at most; respect prefers-reduced-motion.
+- Copy: measured and precise. Buttons name the action ("Push to Instantly"). Errors say what
+  happened and how to fix it. No "please", "simply", "just".
+
+Tech: Next.js (App Router) + Tailwind + Supabase (Auth + Postgres + RLS). Auth uses Supabase Auth.
+All writes to Supabase happen server-side with the service-role key (never in client code).

@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 import {
   canonicalEmail, computeHI, matchingClients, assignLeads,
   type Person, type TerritoryRule,
-} from "./pipeline";
+} from "./lib/pipeline";
 
 const person = (over: Partial<Person> & { alUuid: string }): Person => over;
 

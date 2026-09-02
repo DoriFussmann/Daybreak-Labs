@@ -4,7 +4,7 @@
 //   npx tsx try-pipeline.ts sample.csv        (one file -> simulated split)
 import { readFileSync } from "node:fs";
 import { parse } from "csv-parse/sync";
-import { assignLeads, computeHI, type Person, type TerritoryRule } from "./pipeline";
+import { assignLeads, computeHI, type Person, type TerritoryRule } from "./lib/pipeline";
 
 function load(path: string): Person[] {
   const rows = parse(readFileSync(path), {

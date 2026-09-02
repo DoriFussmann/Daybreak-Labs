@@ -1,26 +1,26 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+:root{
+  --ink:#1A1A2E; --ink-dark:#11111F; --slate:#4A5568; --brass:#B5935A;
+  --parchment:#FAF9F7; --white:#FFFFFF; --smoke:#E4E2DE; --ash:#8A8A8A;
+  --charcoal:#2D2D2D; --sage:#3A7D5E; --amber:#C07C2A; --cinnabar:#C0392B;
 }
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+html,body{background:var(--parchment);color:var(--charcoal);
+  font-family:var(--font-sans),-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  font-weight:400;line-height:1.7;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{color:var(--ink);font-weight:300;letter-spacing:-0.02em}
+h2{font-weight:400;letter-spacing:0} h3,h4{font-weight:500;letter-spacing:0}
+a{color:var(--brass);text-decoration:none;font-weight:500;transition:opacity .15s ease}
+a:hover{opacity:.7}
+.label{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ash)}
+.mono{font-family:var(--font-mono),monospace}
+.btn{height:44px;padding:0 22px;border:none;border-radius:6px;background:var(--ink);color:#fff;
+  font-weight:500;font-size:15px;cursor:pointer;transition:background .15s ease}
+.btn:hover{background:var(--ink-dark)}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--smoke)}
+.btn-ghost:hover{border-color:var(--ink)}
+.card{background:var(--white);border:1px solid var(--smoke);border-radius:10px}
+.input{width:100%;height:44px;padding:0 14px;background:#fff;border:1px solid var(--smoke);
+  border-radius:6px;font-size:16px;color:var(--charcoal);transition:border-color .15s ease}
+.input:focus{outline:none;border-color:var(--brass)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
