@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# AudienceLab / skiptrace exports contain PII — keep local
+sample.csv
+*.csv
+
 # vercel
 .vercel
 

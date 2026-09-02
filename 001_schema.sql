@@ -1,0 +1,182 @@
+-- Blueprint Intent — v1 schema + Row-Level Security
+-- Postgres 15 / Supabase. Run once (e.g. supabase migration or SQL editor).
+-- Design notes:
+--   * al_uuid (AudienceLab UUID) is the identity key: dedup, persistence, HI-match.
+--   * A person is owned by exactly ONE client, ever -> global unique index on leads.al_uuid.
+--   * The nightly pipeline runs as service_role (bypasses RLS) and does all writes.
+--   * Client portal is READ-ONLY through RLS; a client can only ever see its own rows.
+
+create extension if not exists pgcrypto;
+
+-- ---------- enums ----------
+create type list_type    as enum ('FS','CC','HI');
+create type channel      as enum ('email','linkedin');
+create type posting_mode as enum ('opt_in','opt_out');
+create type alert_scope  as enum ('admin','client');
+create type severity     as enum ('info','warning','error');
+
+-- ---------- identity / access ----------
+create table profiles (
+  id        uuid primary key references auth.users(id) on delete cascade,
+  is_admin  boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table clients (
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null,
+  paid          boolean not null default false,
+  is_live       boolean not null default false,          -- admin flips clients live manually
+  posting_mode  posting_mode not null default 'opt_out',
+  linkedin_auth_status text not null default 'pending',  -- pending | connected  (shared by HeyReach + Post for Me)
+  post4me_prompt text,                                    -- per-client flavor prompt (v3)
+  created_at    timestamptz not null default now()
+);
+
+-- maps an auth user to the client(s) they can see
+create table client_members (
+  user_id   uuid not null references auth.users(id) on delete cascade,
+  client_id uuid not null references clients(id) on delete cascade,
+  primary key (user_id, client_id)
+);
+
+-- ---------- territory (state + optional city) ----------
+-- One row = one rule. city NULL means the whole state belongs to this client.
+-- Overlaps across clients are allowed on purpose -> that is the round-robin case.
+create table client_territories (
+  id         uuid primary key default gen_random_uuid(),
+  client_id  uuid not null references clients(id) on delete cascade,
+  state      char(2) not null,        -- normalized upper, e.g. 'CA'
+  city       text                     -- normalized upper, or NULL for whole-state
+);
+create index client_territories_state_city_idx on client_territories (state, city);
+
+-- ---------- campaign id mapping (Instantly / HeyReach) ----------
+create table client_campaigns (
+  id                  uuid primary key default gen_random_uuid(),
+  client_id           uuid not null references clients(id) on delete cascade,
+  channel             channel not null,
+  list_type           list_type not null,
+  external_campaign_id text not null,   -- Instantly or HeyReach campaign id
+  unique (client_id, channel, list_type)
+);
+
+-- ---------- leads (the owned, growing audience file — LEAN subset only) ----------
+-- Deliberately does NOT store ethnicity/religion/credit/income/skiptrace from the export.
+create table leads (
+  id             uuid primary key default gen_random_uuid(),
+  al_uuid        text not null,                 -- AudienceLab UUID (identity key)
+  owning_client_id uuid not null references clients(id) on delete cascade,
+  first_name     text,
+  last_name      text,
+  email          text,                          -- canonical send email
+  company_name   text,
+  job_title      text,
+  personal_city  text,
+  personal_state char(2),
+  linkedin_url   text,
+  source_lists   list_type[] not null default '{}',  -- any of FS/CC/HI
+  date_assigned  date not null default current_date,
+  created_at     timestamptz not null default now()
+);
+-- Owned once, ever: this single index is the whole dedup engine.
+create unique index leads_al_uuid_key on leads (al_uuid);
+create index leads_owner_idx on leads (owning_client_id);
+
+-- ---------- nightly metric snapshots (stored, not real-time) ----------
+create table metric_snapshots (
+  id            uuid primary key default gen_random_uuid(),
+  client_id     uuid not null references clients(id) on delete cascade,
+  channel       channel not null,
+  list_type     list_type not null,
+  snapshot_date date not null,
+  sent int not null default 0,
+  delivered int not null default 0,
+  opens int not null default 0,
+  clicks int not null default 0,
+  replies int not null default 0,
+  bounces int not null default 0,
+  unique (client_id, channel, list_type, snapshot_date)
+);
+
+-- ---------- in-portal alerts ----------
+create table alerts (
+  id         uuid primary key default gen_random_uuid(),
+  scope      alert_scope not null,
+  client_id  uuid references clients(id) on delete cascade, -- null for admin-global
+  type       text not null,
+  severity   severity not null default 'warning',
+  message    text not null,
+  created_at timestamptz not null default now(),
+  read_at    timestamptz
+);
+
+-- ---------- pipeline run log (observability + idempotency guard) ----------
+create table pipeline_runs (
+  id            uuid primary key default gen_random_uuid(),
+  run_date      date not null unique,            -- one run per night; guards re-runs
+  status        text not null default 'started', -- started | completed | skipped | failed
+  fs_count int, cc_count int, hi_count int,
+  assigned_count int, unassigned_count int,
+  error text,
+  started_at    timestamptz not null default now(),
+  finished_at   timestamptz
+);
+
+-- =====================================================================
+-- Row-Level Security
+-- =====================================================================
+create or replace function public.is_admin() returns boolean
+  language sql stable security definer set search_path = public as $$
+  select coalesce((select is_admin from profiles where id = auth.uid()), false)
+$$;
+
+create or replace function public.current_client_ids() returns setof uuid
+  language sql stable security definer set search_path = public as $$
+  select client_id from client_members where user_id = auth.uid()
+$$;
+
+alter table profiles           enable row level security;
+alter table clients            enable row level security;
+alter table client_members     enable row level security;
+alter table client_territories enable row level security;
+alter table client_campaigns   enable row level security;
+alter table leads              enable row level security;
+alter table metric_snapshots   enable row level security;
+alter table alerts             enable row level security;
+alter table pipeline_runs      enable row level security;
+
+-- profiles: you see yourself; admin sees all
+create policy p_profiles_self on profiles for select
+  using (id = auth.uid() or public.is_admin());
+
+-- clients: member sees their client; admin sees all
+create policy p_clients_read on clients for select
+  using (public.is_admin() or id in (select public.current_client_ids()));
+
+create policy p_members_read on client_members for select
+  using (public.is_admin() or user_id = auth.uid());
+
+-- the per-client, read-only tables — same shape everywhere
+create policy p_terr_read on client_territories for select
+  using (public.is_admin() or client_id in (select public.current_client_ids()));
+create policy p_camp_read on client_campaigns for select
+  using (public.is_admin() or client_id in (select public.current_client_ids()));
+create policy p_leads_read on leads for select
+  using (public.is_admin() or owning_client_id in (select public.current_client_ids()));
+create policy p_metrics_read on metric_snapshots for select
+  using (public.is_admin() or client_id in (select public.current_client_ids()));
+
+-- alerts: client sees its own client-scoped alerts; admin sees everything
+create policy p_alerts_read on alerts for select
+  using (
+    public.is_admin()
+    or (scope = 'client' and client_id in (select public.current_client_ids()))
+  );
+
+-- pipeline_runs: admin only
+create policy p_runs_admin on pipeline_runs for select using (public.is_admin());
+
+-- NOTE: no INSERT/UPDATE/DELETE policies for clients on purpose.
+-- All writes happen server-side via the service_role key, which bypasses RLS.
+-- The portal is strictly read-only; that is the isolation guarantee.
