@@ -41,7 +41,7 @@ export default async function ClientsPage() {
         }}
       >
         <a href="/console" style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>
-          Blueprint
+          DaybreakLabs
         </a>
         <form action={signOut}>
           <button type="submit" className="btn btn-ghost">

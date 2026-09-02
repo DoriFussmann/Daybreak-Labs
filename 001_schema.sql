@@ -1,4 +1,4 @@
--- Blueprint Intent — v1 schema + Row-Level Security
+-- DaybreakLabs — v1 schema + Row-Level Security
 -- Postgres 15 / Supabase. Run once (e.g. supabase migration or SQL editor).
 -- Design notes:
 --   * al_uuid (AudienceLab UUID) is the identity key: dedup, persistence, HI-match.

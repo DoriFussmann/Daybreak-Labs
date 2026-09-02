@@ -14,7 +14,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Blueprint",
+  title: "DaybreakLabs",
   description: "Lead assignment pipeline",
 };
 

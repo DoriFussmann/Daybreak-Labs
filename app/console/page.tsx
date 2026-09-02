@@ -29,7 +29,7 @@ export default async function Console() {
         }}
       >
         <div style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>
-          Blueprint
+          DaybreakLabs
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <a href="/console/clients">Manage clients</a>
