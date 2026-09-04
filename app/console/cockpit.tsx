@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { runAssignment } from "./actions";
+import { pullAnalyticsNow } from "./analytics-actions";
 import { pushToInstantly } from "./push-actions";
 
 type Success = Extract<Awaited<ReturnType<typeof runAssignment>>, { ok: true }>;
 type PushResult = Awaited<ReturnType<typeof pushToInstantly>>;
+type PullResult = Awaited<ReturnType<typeof pullAnalyticsNow>>;
 
 export function Cockpit() {
   const [fs, setFs] = useState<File | null>(null);
@@ -16,6 +18,9 @@ export function Cockpit() {
   const [pushing, setPushing] = useState(false);
   const [pushError, setPushError] = useState("");
   const [pushResult, setPushResult] = useState<PushResult | null>(null);
+  const [pulling, setPulling] = useState(false);
+  const [pullError, setPullError] = useState("");
+  const [pullResult, setPullResult] = useState<PullResult | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,7 +39,7 @@ export function Cockpit() {
   }
 
   return (
-    <div style={{ maxWidth: 1160, margin: "0 auto", padding: "64px 24px" }}>
+    <div>
       <h2>Tonight&apos;s run</h2>
       <p style={{ color: "var(--ash)", marginTop: 8, maxWidth: 680 }}>
         Upload both exports, then assign. Nothing runs on its own.
@@ -73,6 +78,49 @@ export function Cockpit() {
           {busy ? "Assigning…" : "Upload and assign"}
         </button>
       </form>
+
+      <div className="card" style={{ padding: "36px 32px", marginTop: 40 }}>
+        <h3 style={{ marginBottom: 8 }}>Pull analytics</h3>
+        <p style={{ color: "var(--ash)", marginBottom: 24, maxWidth: 680 }}>
+          Fetch Instantly daily metrics for the last 90 days and store them as snapshots.
+        </p>
+        <button
+          className="btn"
+          type="button"
+          disabled={pulling}
+          onClick={async () => {
+            setPullError("");
+            setPulling(true);
+            try {
+              const res = await pullAnalyticsNow();
+              setPullResult(res);
+            } catch (e: unknown) {
+              setPullError(e instanceof Error ? e.message : "Pull failed.");
+            }
+            setPulling(false);
+          }}
+          style={{ opacity: pulling ? 0.6 : 1, cursor: pulling ? "default" : "pointer" }}
+        >
+          {pulling ? "Pulling…" : "Pull analytics"}
+        </button>
+        {pullError && (
+          <div style={{ color: "var(--cinnabar)", fontSize: 14, marginTop: 20 }}>{pullError}</div>
+        )}
+        {pullResult && (
+          <div style={{ marginTop: 20 }}>
+            <div>
+              Pulled {pullResult.campaignsPulled} campaigns · {pullResult.rowsWritten} rows written
+            </div>
+            {pullResult.errors.length > 0 && (
+              <div style={{ color: "var(--cinnabar)", fontSize: 14, marginTop: 16 }}>
+                {pullResult.errors.map((msg) => (
+                  <div key={msg}>{msg}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {result && (
         <div style={{ marginTop: 40 }}>

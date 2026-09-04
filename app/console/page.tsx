@@ -1,49 +1,8 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 import { Cockpit } from "./cockpit";
 
-async function signOut() {
-  "use server";
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
-}
-
 export default async function Console() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  await requireAdmin();
 
-  return (
-    <div>
-      <header style={{ height: 64, borderBottom: "1px solid var(--smoke)" }}>
-        <div
-          style={{
-            maxWidth: 1160,
-            height: "100%",
-            margin: "0 auto",
-            padding: "0 24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>
-            DaybreakLabs
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <a href="/console/clients">Manage clients</a>
-            <form action={signOut}>
-              <button type="submit" className="btn btn-ghost">
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-      <Cockpit />
-    </div>
-  );
+  return <Cockpit />;
 }

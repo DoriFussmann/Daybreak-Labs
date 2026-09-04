@@ -1,11 +1,26 @@
-import { requireAdmin } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { signOut } from "@/app/login/actions";
-import { ConsoleNav } from "./console-nav";
+import { PortalNav } from "./portal-nav";
 
 export const dynamic = "force-dynamic";
 
-export default async function ConsoleLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+export default async function PortalLayout({ children }: { children: React.ReactNode }) {
+  const session = await requireSession();
+  if (session.isAdmin) redirect("/console");
+
+  const clientId = session.clientIds[0];
+  if (!clientId) redirect("/login");
+
+  const db = createAdminClient();
+  const { data: client } = await db
+    .from("clients")
+    .select("id, name, company_name")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (!client) redirect("/login");
+  const displayName = client.company_name ?? client.name;
 
   return (
     <div>
@@ -21,12 +36,9 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
             justifyContent: "space-between",
           }}
         >
-          <a
-            href="/console"
-            style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}
-          >
+          <div style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>
             DaybreakLabs
-          </a>
+          </div>
           <form action={signOut}>
             <button type="submit" className="btn btn-ghost">
               Sign out
@@ -45,7 +57,8 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
         }}
       >
         <aside style={{ width: 220, flexShrink: 0 }}>
-          <ConsoleNav />
+          <div className="label" style={{ marginBottom: 16 }}>{displayName}</div>
+          <PortalNav />
         </aside>
         <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
       </div>

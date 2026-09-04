@@ -10,6 +10,7 @@ visual system is borrowed.
 - **Inter, weights 300 / 400 / 500 only. Bold (600+) is forbidden anywhere.** Emphasis = weight 500, color, or size — never bold.
 - **No** gradients, glassmorphism, frosted panels, drop-shadow stacks, purple or electric blue, emoji, exclamation marks, countdown-urgency/scarcity language, or AI-forward/hype wording ("AI-powered", "supercharge", "unlock").
 - **Icons:** Lucide only, stroke width 1.5, never filled. 20px inline, 24px standalone.
+- **Dropdowns:** never a native `<select>` for an openable list. OS option menus break the system every time. Use `app/ui/dropdown.tsx` (`.dropdown` classes).
 - Uppercase is only for small labels (12px, 0.08em tracking). Everything else is sentence case.
 
 ## Color tokens
@@ -49,6 +50,16 @@ visual system is borrowed.
 - Buttons: primary = ink bg + white text (500), hover ink-dark. Secondary/ghost = transparent + smoke border, hover border ink.
 - Status: sage / amber / cinnabar as text or 1px-bordered chips, never loud fills.
 - Metrics: ash uppercase label above, large light number (34px/300 ink) below.
+- Dropdowns (required — do not invent another version):
+  - Trigger matches `.input`: 44px tall, white, 1px smoke, 6px radius, 16px/400 charcoal, 14px left padding.
+  - Chevron is Lucide `ChevronDown`, 16px, stroke 1.5, ash, 12px from the right. Never the OS arrow. Rotates 180° when open (150ms).
+  - Hover: border ink. Open/focus: border brass, no outline.
+  - Menu sits 4px below the trigger, same width. White, 1px smoke, 10px radius (card), 6px vertical padding. **No shadow.** Max-height 280px, then scroll.
+  - Options: 15px/400 charcoal, 10px 14px padding, full-width text buttons. Hover: `rgba(26,26,46,.045)` + ink. Selected: ink / 500 + 3px brass inset (same as portal nav).
+  - Long labels ellipsis on the trigger; full text in the menu.
+  - Choosers that change the URL update immediately on pick — no extra Apply button.
+  - Form fields: pass `name` so a hidden input submits with the form. Width 100% of the field.
+  - Implement with `app/ui/dropdown.tsx`. Do not restyle `<select>`.
 
 ## Copy voice
 Measured, precise, calm. Sentence case. Say what a control does ("Push to Instantly", "Compute and assign").
@@ -99,5 +110,30 @@ a:hover{opacity:.7}
 .input{width:100%;height:44px;padding:0 14px;background:#fff;border:1px solid var(--smoke);
   border-radius:6px;font-size:16px;color:var(--charcoal);transition:border-color .15s ease}
 .input:focus{outline:none;border-color:var(--brass)}
+.dropdown-wrap{width:280px;max-width:100%}
+.dropdown{position:relative;width:100%}
+.dropdown-trigger{
+  position:relative;width:100%;height:44px;padding:0 40px 0 14px;
+  background:var(--white);border:1px solid var(--smoke);border-radius:6px;
+  font-family:inherit;font-size:16px;font-weight:400;color:var(--charcoal);text-align:left;cursor:pointer;
+  display:flex;align-items:center;transition:border-color .15s ease}
+.dropdown-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dropdown-trigger:hover{border-color:var(--ink)}
+.dropdown-trigger:focus,.dropdown-trigger[data-open="true"]{outline:none;border-color:var(--brass)}
+.dropdown-chevron{position:absolute;right:12px;color:var(--ash);flex-shrink:0;transition:transform .15s ease}
+.dropdown-trigger[data-open="true"] .dropdown-chevron{transform:rotate(180deg)}
+.dropdown-menu{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;
+  background:var(--white);border:1px solid var(--smoke);border-radius:10px;
+  padding:6px 0;max-height:280px;overflow:auto}
+.dropdown-option{
+  display:block;width:100%;padding:10px 14px;border:none;background:transparent;
+  font-family:inherit;font-size:15px;font-weight:400;color:var(--charcoal);text-align:left;cursor:pointer}
+.dropdown-option:hover{background:rgba(26,26,46,.045);color:var(--ink)}
+.dropdown-option[data-active="true"]{color:var(--ink);font-weight:500;box-shadow:inset 3px 0 0 var(--brass)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 ```
+
+### 3. Dropdown component — `app/ui/dropdown.tsx`
+
+Use this for every chooser and form select. Import `Dropdown` from `@/app/ui/dropdown`. Never ship a native `<select>` menu.

@@ -1,0 +1,10 @@
+---
+description: Use the shared Dropdown component; never native select menus
+alwaysApply: true
+---
+
+# Dropdowns
+
+Never use a native `<select>` for an openable list. OS option menus break the design system.
+
+Use `app/ui/dropdown.tsx` (`import { Dropdown } from "@/app/ui/dropdown"`). Visual rules and CSS live in `DESIGN.md` under Dropdowns. Do not invent another menu style.

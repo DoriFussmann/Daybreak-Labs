@@ -1,15 +1,6 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClientRecord } from "./actions";
-import { BackLink } from "../back-link";
-
-async function signOut() {
-  "use server";
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
-}
 
 async function onCreate(formData: FormData) {
   "use server";
@@ -17,66 +8,41 @@ async function onCreate(formData: FormData) {
 }
 
 export default async function ClientsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await requireSession();
+  const isAdmin = session.isAdmin;
 
   const db = createAdminClient();
-  const { data: clients } = await db
-    .from("clients")
-    .select("id, name, is_live")
-    .order("name");
+  const { data: clients } = isAdmin
+    ? await db.from("clients").select("id, name, is_live").order("name")
+    : await db.from("clients").select("id, name, is_live").in("id", session.clientIds).order("name");
 
   return (
     <div>
-      <header style={{ height: 64, borderBottom: "1px solid var(--smoke)" }}>
-        <div
-          style={{
-            maxWidth: 1160,
-            height: "100%",
-            margin: "0 auto",
-            padding: "0 24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <a href="/console" style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>
-            DaybreakLabs
-          </a>
-          <form action={signOut}>
-            <button type="submit" className="btn btn-ghost">
-              Sign out
-            </button>
-          </form>
-        </div>
-      </header>
-
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "64px 24px" }}>
-        <BackLink href="/console" label="Back to console" />
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
           <div>
-            <h2>Clients</h2>
+            <h2>{isAdmin ? "Clients" : "Your clients"}</h2>
             <p style={{ color: "var(--ash)", marginTop: 8, maxWidth: 680 }}>
-              Zones, campaigns, and live status for each operator.
+              {isAdmin
+                ? "Zones, campaigns, and live status for each operator."
+                : "Open a client to see assigned audience and connection status."}
             </p>
           </div>
-          <details>
-            <summary
-              className="btn btn-ghost"
-              style={{ listStyle: "none", display: "inline-flex", alignItems: "center" }}
-            >
-              Add client
-            </summary>
-            <form action={onCreate} style={{ display: "flex", gap: 8, marginTop: 16, minWidth: 280 }}>
-              <input className="input" name="name" placeholder="Client name" />
-              <button className="btn" type="submit">
-                Save
-              </button>
-            </form>
-          </details>
+          {isAdmin ? (
+            <details>
+              <summary
+                className="btn btn-ghost"
+                style={{ listStyle: "none", display: "inline-flex", alignItems: "center" }}
+              >
+                Add client
+              </summary>
+              <form action={onCreate} style={{ display: "flex", gap: 8, marginTop: 16, minWidth: 280 }}>
+                <input className="input" name="name" placeholder="Client name" />
+                <button className="btn" type="submit">
+                  Save
+                </button>
+              </form>
+            </details>
+          ) : null}
         </div>
 
         <div className="card" style={{ marginTop: 40, padding: "8px 0" }}>
@@ -117,7 +83,6 @@ export default async function ClientsPage() {
             ))
           )}
         </div>
-      </div>
     </div>
   );
 }

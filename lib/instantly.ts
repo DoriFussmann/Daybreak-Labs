@@ -65,3 +65,45 @@ export async function getCampaignName(campaignId: string): Promise<string | null
   return info?.name ?? null;
 }
 
+export type DailyMetric = { date: string; sent: number; opens: number; clicks: number; replies: number };
+
+function asCount(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function getCampaignDailyAnalytics(
+  campaignId: string,
+  startDate: string,
+  endDate: string,
+): Promise<DailyMetric[]> {
+  const id = campaignId.trim();
+  const key = process.env.INSTANTLY_API_KEY;
+  if (!id || !key) return [];
+  try {
+    const params = new URLSearchParams({
+      campaign_id: id,
+      start_date: startDate,
+      end_date: endDate,
+    });
+    const res = await fetch(`${BASE}/campaigns/analytics/daily?${params}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const rows = Array.isArray(data) ? data : [];
+    return rows
+      .map((row: { date?: unknown; sent?: unknown; unique_opened?: unknown; unique_clicks?: unknown; unique_replies?: unknown }) => ({
+        date: typeof row?.date === "string" ? row.date : "",
+        sent: asCount(row?.sent),
+        opens: asCount(row?.unique_opened),
+        clicks: asCount(row?.unique_clicks),
+        replies: asCount(row?.unique_replies),
+      }))
+      .filter((row: DailyMetric) => row.date);
+  } catch {
+    return [];
+  }
+}
+

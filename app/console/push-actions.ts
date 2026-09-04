@@ -1,8 +1,10 @@
 "use server";
+import { assertAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addLeadToCampaign } from "@/lib/instantly";
 
 export async function pushToInstantly() {
+  await assertAdmin();
   const db = createAdminClient();
 
   const { data: campaigns } = await db.from("client_campaigns")

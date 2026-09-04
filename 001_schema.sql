@@ -14,11 +14,15 @@ create type channel      as enum ('email','linkedin');
 create type posting_mode as enum ('opt_in','opt_out');
 create type alert_scope  as enum ('admin','client');
 create type severity     as enum ('info','warning','error');
+create type user_role    as enum ('superadmin','admin','client');
 
 -- ---------- identity / access ----------
+-- One row per auth user. Set `role` in the Table Editor after adding a user in Authentication.
+-- superadmin and admin both get the operator console; client is portal-only (via client_members).
 create table profiles (
-  id        uuid primary key references auth.users(id) on delete cascade,
-  is_admin  boolean not null default false,
+  id         uuid primary key references auth.users(id) on delete cascade,
+  role       user_role not null default 'client',
+  is_admin   boolean not null default false, -- kept in sync with role (admin | superadmin)
   created_at timestamptz not null default now()
 );
 
@@ -132,9 +136,45 @@ create table pipeline_runs (
 -- =====================================================================
 -- Row-Level Security
 -- =====================================================================
+create or replace function public.sync_profile_role()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  new.is_admin := new.role in ('admin', 'superadmin');
+  return new;
+end;
+$$;
+
+create trigger profiles_sync_role
+  before insert or update of role on profiles
+  for each row execute procedure public.sync_profile_role();
+
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  requested text := lower(coalesce(new.raw_user_meta_data->>'role', ''));
+  r public.user_role;
+begin
+  r := case requested
+    when 'superadmin' then 'superadmin'::public.user_role
+    when 'admin' then 'admin'::public.user_role
+    else 'client'::public.user_role
+  end;
+  insert into public.profiles (id, role) values (new.id, r)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
 create or replace function public.is_admin() returns boolean
   language sql stable security definer set search_path = public as $$
-  select coalesce((select is_admin from profiles where id = auth.uid()), false)
+  select coalesce(
+    (select p.role in ('admin', 'superadmin') from profiles p where p.id = auth.uid()),
+    false
+  )
 $$;
 
 create or replace function public.current_client_ids() returns setof uuid

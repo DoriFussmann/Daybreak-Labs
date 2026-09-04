@@ -1,4 +1,5 @@
 "use server";
+import { assertAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parse } from "csv-parse/sync";
 import { assignLeads, computeHI, type Person, type TerritoryRule } from "@/lib/pipeline";
@@ -14,6 +15,7 @@ function toPeople(csv: string): Person[] {
 }
 
 export async function runAssignment(formData: FormData) {
+  await assertAdmin();
   const fsFile = formData.get("fs") as File | null;
   const ccFile = formData.get("cc") as File | null;
   if (!fsFile || !ccFile) return { ok: false as const, error: "Upload both files." };

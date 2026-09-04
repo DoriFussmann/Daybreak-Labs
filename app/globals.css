@@ -37,8 +37,33 @@ select.input{
   padding-right:40px;
   cursor:pointer;
 }
+.dropdown-wrap{width:280px;max-width:100%}
+.dropdown{position:relative;width:100%}
+.dropdown-trigger{
+  position:relative;width:100%;height:44px;padding:0 40px 0 14px;
+  background:var(--white);border:1px solid var(--smoke);border-radius:6px;
+  font-family:inherit;font-size:16px;font-weight:400;color:var(--charcoal);text-align:left;cursor:pointer;
+  display:flex;align-items:center;transition:border-color .15s ease}
+.dropdown-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dropdown-trigger:hover{border-color:var(--ink)}
+.dropdown-trigger:focus,.dropdown-trigger[data-open="true"]{outline:none;border-color:var(--brass)}
+.dropdown-chevron{position:absolute;right:12px;color:var(--ash);flex-shrink:0;transition:transform .15s ease}
+.dropdown-trigger[data-open="true"] .dropdown-chevron{transform:rotate(180deg)}
+.dropdown-menu{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;
+  background:var(--white);border:1px solid var(--smoke);border-radius:10px;
+  padding:6px 0;max-height:280px;overflow:auto}
+.dropdown-option{
+  display:block;width:100%;padding:10px 14px;border:none;background:transparent;
+  font-family:inherit;font-size:15px;font-weight:400;color:var(--charcoal);text-align:left;cursor:pointer}
+.dropdown-option:hover{background:rgba(26,26,46,.045);color:var(--ink)}
+.dropdown-option[data-active="true"]{color:var(--ink);font-weight:500;box-shadow:inset 3px 0 0 var(--brass)}
 .textarea{width:100%;min-height:96px;padding:12px 14px;background:#fff;border:1px solid var(--smoke);
   border-radius:6px;font-size:16px;color:var(--charcoal);line-height:1.5;resize:none;transition:border-color .15s ease}
 .textarea:focus{outline:none;border-color:var(--brass)}
 .textarea::-webkit-resizer{display:none}
+.portal-nav a{font-weight:inherit}
+.portal-nav a:hover{opacity:1}
+.portal-range a:hover{opacity:1}
+.portal-nav a[data-active="false"]:hover{background:rgba(26,26,46,.045);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
