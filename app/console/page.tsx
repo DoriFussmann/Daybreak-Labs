@@ -18,26 +18,29 @@ export default async function Console() {
 
   return (
     <div>
-      <header
-        style={{
-          height: 64,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 24px",
-          borderBottom: "1px solid var(--smoke)",
-        }}
-      >
-        <div style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>
-          DaybreakLabs
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <a href="/console/clients">Manage clients</a>
-          <form action={signOut}>
-            <button type="submit" className="btn btn-ghost">
-              Sign out
-            </button>
-          </form>
+      <header style={{ height: 64, borderBottom: "1px solid var(--smoke)" }}>
+        <div
+          style={{
+            maxWidth: 1160,
+            height: "100%",
+            margin: "0 auto",
+            padding: "0 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>
+            DaybreakLabs
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <a href="/console/clients">Manage clients</a>
+            <form action={signOut}>
+              <button type="submit" className="btn btn-ghost">
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       <Cockpit />

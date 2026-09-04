@@ -28,8 +28,14 @@ create table clients (
   paid          boolean not null default false,
   is_live       boolean not null default false,          -- admin flips clients live manually
   posting_mode  posting_mode not null default 'opt_out',
-  linkedin_auth_status text not null default 'pending',  -- pending | connected  (shared by HeyReach + Post for Me)
+  linkedin_auth_status text not null default 'pending',  -- pending | connected  (legacy; UI derives HeyReach / Post4Me separately)
   post4me_prompt text,                                    -- per-client flavor prompt (v3)
+  company_name  text,
+  key_contact   text,
+  key_contact_email text,
+  phone         text,
+  website       text,
+  site_pixel    text,
   created_at    timestamptz not null default now()
 );
 

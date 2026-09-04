@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Briefcase, Eye, EyeOff, Lock, Mail, Users } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { signInWithPassword } from "./actions";
 
 function BrandingPanel() {
   return (
@@ -69,7 +68,6 @@ function MobileLogo() {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -80,14 +78,16 @@ export default function LoginPage() {
     e?.preventDefault();
     setError("");
     setBusy(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const formData = new FormData();
+    formData.set("email", email);
+    formData.set("password", password);
+    const result = await signInWithPassword(formData);
     setBusy(false);
-    if (error) {
-      setError("Those details didn't match an account. Check and try again.");
+    if (!result.ok) {
+      setError(result.message);
       return;
     }
-    router.push("/console");
+    window.location.assign("/console");
   }
 
   return (
