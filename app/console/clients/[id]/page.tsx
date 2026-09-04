@@ -43,7 +43,7 @@ export default async function ClientZone({
   const db = createAdminClient();
   const { data: clientRow } = await db
     .from("clients")
-    .select("id, name, is_live, paid, posting_mode, created_at, client_type")
+    .select("id, name, is_live, paid, posting_mode, created_at, client_type, instantly_account")
     .eq("id", id)
     .single();
   if (!clientRow) notFound();
@@ -52,9 +52,11 @@ export default async function ClientZone({
     .select("company_name, key_contact, key_contact_email, phone, website, site_pixel")
     .eq("id", id)
     .maybeSingle();
+  const instantlyAccount = clientRow.instantly_account === "B" ? "B" : "A";
   const client = {
     ...clientRow,
     client_type: clientRow.client_type ?? null,
+    instantly_account: instantlyAccount,
     company_name: extras?.company_name ?? null,
     key_contact: extras?.key_contact ?? null,
     key_contact_email: extras?.key_contact_email ?? null,
@@ -89,7 +91,7 @@ export default async function ClientZone({
     { key: "hi" as const, list: "HI", id: campaignByType.HI ?? "" },
   ];
   const campaignInfos = await Promise.all(
-    campaignFields.map(async (field) => (field.id ? getCampaignInfo(field.id) : null)),
+    campaignFields.map(async (field) => (field.id ? getCampaignInfo(field.id, instantlyAccount) : null)),
   );
   const campaignNames = campaignInfos.map((info) => info?.name ?? null);
 
@@ -103,7 +105,9 @@ export default async function ClientZone({
 
   const heyreachConn = connectionStatus(heyreachId, Boolean(heyreachName), Boolean(process.env.HEYREACH_API_KEY));
   const post4meConn = connectionStatus(post4meId, Boolean(post4meName), Boolean(process.env.POST_FOR_ME_API_KEY));
-  const hasInstantlyKey = Boolean(process.env.INSTANTLY_API_KEY);
+  const hasInstantlyKey = Boolean(
+    instantlyAccount === "B" ? process.env.INSTANTLY_API_KEY_B : process.env.INSTANTLY_API_KEY,
+  );
   const instantlyStatuses = campaignFields.map((field, i) =>
     instantlyStatus(field.id, campaignInfos[i], hasInstantlyKey),
   );
@@ -122,6 +126,7 @@ export default async function ClientZone({
       clientType:
         String(formData.get("client_type_custom") ?? "").trim() ||
         String(formData.get("client_type") ?? "").replace(/^__custom__$/, ""),
+      instantlyAccount: String(formData.get("instantly_account") ?? ""),
       keyContact: String(formData.get("key_contact") ?? ""),
       keyContactEmail: String(formData.get("key_contact_email") ?? ""),
       phone: String(formData.get("phone") ?? ""),
@@ -282,7 +287,7 @@ export default async function ClientZone({
 
             <div style={{ height: 1, background: "var(--smoke)", margin: "32px 0 24px" }} />
 
-            <h4 style={{ marginBottom: 16 }}>LinkedIn connection</h4>
+            <h4 style={{ marginBottom: 16 }}>LinkedIn Connection</h4>
             <Cols style={{ marginBottom: 32 }}>
               <StatusCell title="HeyReach" label={heyreachConn.label} tone={heyreachConn.tone} />
               <StatusCell title="Post4Me" label={post4meConn.label} tone={post4meConn.tone} />
@@ -293,7 +298,28 @@ export default async function ClientZone({
               />
             </Cols>
 
-            <h4 style={{ marginBottom: 16 }}>Instantly campaigns</h4>
+            <h4 style={{ marginBottom: 16 }}>Instantly Campaigns</h4>
+            <Cols style={{ marginBottom: 8 }}>
+              <Field label="Instantly account">
+                {isAdmin ? (
+                  <Dropdown
+                    name="instantly_account"
+                    defaultValue={client.instantly_account}
+                    options={[
+                      { value: "A", label: "Account A" },
+                      { value: "B", label: "Account B" },
+                    ]}
+                  />
+                ) : (
+                  <ReadValue>
+                    {client.instantly_account === "B" ? "Account B" : "Account A"}
+                  </ReadValue>
+                )}
+              </Field>
+            </Cols>
+            <p style={{ color: "var(--ash)", fontSize: 13, margin: "0 0 16px" }}>
+              Campaign IDs must belong to the selected account.
+            </p>
             <Cols>
               {campaignFields.map((field, i) => (
                 <StatusCell

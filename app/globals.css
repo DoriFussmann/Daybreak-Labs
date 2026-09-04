@@ -66,4 +66,17 @@ select.input{
 .portal-nav a:hover{opacity:1}
 .portal-range a:hover{opacity:1}
 .portal-nav a[data-active="false"]:hover{background:rgba(26,26,46,.045);color:var(--ink)}
+.portal-nav-toggle{
+  display:flex;align-items:center;justify-content:center;
+  width:32px;height:32px;padding:0;border:none;border-radius:8px;
+  background:transparent;color:var(--slate);cursor:pointer;flex-shrink:0;
+  transition:background .15s ease,color .15s ease}
+.portal-nav-toggle:hover{background:rgba(26,26,46,.045);color:var(--ink)}
+.metric-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.metric-card{padding:16px 14px}
+.metric-card .metric-value{font-size:26px;font-weight:300;color:var(--ink);line-height:1.15;margin-top:6px}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media (max-width:768px){.metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

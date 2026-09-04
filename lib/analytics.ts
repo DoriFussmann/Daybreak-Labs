@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCampaignDailyAnalytics } from "@/lib/instantly";
+import { getCampaignDailyAnalytics, type InstantlyAccount } from "@/lib/instantly";
 
 function utcYmd(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -22,6 +22,11 @@ export async function pullEmailAnalytics(opts?: { days?: number }): Promise<{
     .from("client_campaigns")
     .select("client_id, list_type, external_campaign_id")
     .eq("channel", "email");
+  const { data: clients } = await db.from("clients").select("id, instantly_account");
+  const accountByClient = new Map<string, InstantlyAccount>();
+  for (const row of clients ?? []) {
+    accountByClient.set(row.id, row.instantly_account === "B" ? "B" : "A");
+  }
 
   const records: {
     client_id: string;
@@ -42,7 +47,8 @@ export async function pullEmailAnalytics(opts?: { days?: number }): Promise<{
     const campaignId = mapping.external_campaign_id?.trim();
     if (!campaignId) continue;
     campaignsPulled += 1;
-    const daily = await getCampaignDailyAnalytics(campaignId, startDate, endDate);
+    const account = accountByClient.get(mapping.client_id) ?? "A";
+    const daily = await getCampaignDailyAnalytics(campaignId, startDate, endDate, account);
     for (const row of daily) {
       records.push({
         client_id: mapping.client_id,
@@ -54,7 +60,7 @@ export async function pullEmailAnalytics(opts?: { days?: number }): Promise<{
         clicks: row.clicks,
         replies: row.replies,
         delivered: 0,
-        bounces: 0,
+        bounces: row.bounces,
       });
     }
   }

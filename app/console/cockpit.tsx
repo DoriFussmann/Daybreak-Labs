@@ -40,7 +40,7 @@ export function Cockpit() {
 
   return (
     <div>
-      <h2>Tonight&apos;s run</h2>
+      <h2>Tonight&apos;s Run</h2>
       <p style={{ color: "var(--ash)", marginTop: 8, maxWidth: 680 }}>
         Upload both exports, then assign. Nothing runs on its own.
       </p>
@@ -80,7 +80,7 @@ export function Cockpit() {
       </form>
 
       <div className="card" style={{ padding: "36px 32px", marginTop: 40 }}>
-        <h3 style={{ marginBottom: 8 }}>Pull analytics</h3>
+        <h3 style={{ marginBottom: 8 }}>Pull Analytics</h3>
         <p style={{ color: "var(--ash)", marginBottom: 24, maxWidth: 680 }}>
           Fetch Instantly daily metrics for the last 90 days and store them as snapshots.
         </p>

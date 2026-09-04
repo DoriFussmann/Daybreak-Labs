@@ -22,7 +22,7 @@ export function DangerZone({ clientId, clientName }: { clientId: string; clientN
       className="card"
       style={{ padding: "36px 32px", marginTop: 24, borderColor: "var(--cinnabar)" }}
     >
-      <h3 style={{ marginBottom: 8, color: "var(--cinnabar)" }}>Danger zone</h3>
+      <h3 style={{ marginBottom: 8, color: "var(--cinnabar)" }}>Danger Zone</h3>
       <p style={{ color: "var(--ash)", marginTop: 0, marginBottom: 24, maxWidth: 680 }}>
         Permanently delete this client and everything attached to it: territories, campaigns,
         members, assigned leads, metrics, and alerts. Assigned people can be given to another

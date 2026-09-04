@@ -23,7 +23,7 @@ export default async function PortalAccount() {
   const db = createAdminClient();
   const { data: clientRow } = await db
     .from("clients")
-    .select("id, name, is_live, paid, posting_mode, created_at, client_type")
+    .select("id, name, is_live, paid, posting_mode, created_at, client_type, instantly_account")
     .eq("id", id)
     .single();
   if (!clientRow) redirect("/login");
@@ -32,9 +32,11 @@ export default async function PortalAccount() {
     .select("company_name, key_contact, key_contact_email, phone, website, site_pixel")
     .eq("id", id)
     .maybeSingle();
+  const instantlyAccount = clientRow.instantly_account === "B" ? "B" : "A";
   const client = {
     ...clientRow,
     client_type: clientRow.client_type ?? null,
+    instantly_account: instantlyAccount,
     company_name: extras?.company_name ?? null,
     key_contact: extras?.key_contact ?? null,
     key_contact_email: extras?.key_contact_email ?? null,
@@ -64,7 +66,7 @@ export default async function PortalAccount() {
     { key: "hi" as const, list: "HI", id: campaignByType.HI ?? "" },
   ];
   const campaignInfos = await Promise.all(
-    campaignFields.map(async (field) => (field.id ? getCampaignInfo(field.id) : null)),
+    campaignFields.map(async (field) => (field.id ? getCampaignInfo(field.id, instantlyAccount) : null)),
   );
 
   const heyreachId = linkedByType.FS ?? "";
@@ -77,7 +79,9 @@ export default async function PortalAccount() {
 
   const heyreachConn = connectionStatus(heyreachId, Boolean(heyreachName), Boolean(process.env.HEYREACH_API_KEY));
   const post4meConn = connectionStatus(post4meId, Boolean(post4meName), Boolean(process.env.POST_FOR_ME_API_KEY));
-  const hasInstantlyKey = Boolean(process.env.INSTANTLY_API_KEY);
+  const hasInstantlyKey = Boolean(
+    instantlyAccount === "B" ? process.env.INSTANTLY_API_KEY_B : process.env.INSTANTLY_API_KEY,
+  );
   const instantlyStatuses = campaignFields.map((field, i) =>
     instantlyStatus(field.id, campaignInfos[i], hasInstantlyKey),
   );
@@ -127,7 +131,7 @@ export default async function PortalAccount() {
 
         <div style={{ height: 1, background: "var(--smoke)", margin: "32px 0 24px" }} />
 
-        <h4 style={{ marginBottom: 16 }}>LinkedIn connection</h4>
+        <h4 style={{ marginBottom: 16 }}>LinkedIn Connection</h4>
         <Cols style={{ marginBottom: 32 }}>
           <StatusCell title="HeyReach" label={heyreachConn.label} tone={heyreachConn.tone} />
           <StatusCell title="Post4Me" label={post4meConn.label} tone={post4meConn.tone} />
@@ -138,7 +142,7 @@ export default async function PortalAccount() {
           />
         </Cols>
 
-        <h4 style={{ marginBottom: 16 }}>Instantly campaigns</h4>
+        <h4 style={{ marginBottom: 16 }}>Instantly Campaigns</h4>
         <Cols>
           {campaignFields.map((field, i) => (
             <StatusCell

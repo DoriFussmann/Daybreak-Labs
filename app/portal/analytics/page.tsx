@@ -1,9 +1,10 @@
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getCampaignInfo, getCampaignOverview } from "@/lib/instantly";
 import { Section } from "@/app/console/clients/client-fields";
-import { TrendChart, type DailyPoint } from "./trend-chart";
 
 const RANGES = [7, 30, 90] as const;
 type Range = (typeof RANGES)[number];
@@ -29,13 +30,23 @@ function formatRate(value: number | null): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function formatCount(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
+function pctOfSent(part: number, sent: number): number {
+  if (sent === 0) return 0;
+  return Math.round((part / sent) * 100);
+}
+
 export default async function PortalAnalytics({
   searchParams,
 }: {
   searchParams: Promise<{ range?: string | string[] }>;
 }) {
   const session = await requireSession();
-  if (!session.clientIds[0]) redirect("/login");
+  const clientId = session.clientIds[0];
+  if (!clientId) redirect("/login");
 
   const range = parseRange((await searchParams).range);
   const end = new Date();
@@ -45,57 +56,79 @@ export default async function PortalAnalytics({
   const endDate = utcYmd(end);
 
   const db = await createClient();
-  const { data } = await db
-    .from("metric_snapshots")
-    .select("list_type, snapshot_date, sent, opens, clicks, replies")
-    .eq("channel", "email")
-    .gte("snapshot_date", startDate)
-    .lte("snapshot_date", endDate)
-    .order("snapshot_date", { ascending: true });
+  const [{ data }, { data: clientRow }, { data: campaignRows }] = await Promise.all([
+    db
+      .from("metric_snapshots")
+      .select("list_type, snapshot_date, sent, opens, replies")
+      .eq("channel", "email")
+      .gte("snapshot_date", startDate)
+      .lte("snapshot_date", endDate)
+      .order("snapshot_date", { ascending: true }),
+    db.from("clients").select("instantly_account").eq("id", clientId).maybeSingle(),
+    db.from("client_campaigns").select("list_type, external_campaign_id").eq("channel", "email"),
+  ]);
+
+  const instantlyAccount = clientRow?.instantly_account === "B" ? "B" : "A";
+  const campaignIdByList = Object.fromEntries(
+    (campaignRows ?? []).map((row) => [row.list_type, row.external_campaign_id as string]),
+  ) as Record<string, string | undefined>;
+  const linkedLists = LISTS.filter((list) => (campaignRows ?? []).some((row) => row.list_type === list));
 
   const rows = data ?? [];
   let sent = 0;
   let opens = 0;
-  let clicks = 0;
   let replies = 0;
-  const byDate = new Map<string, DailyPoint>();
-  const byList: Record<(typeof LISTS)[number], { sent: number; replies: number }> = {
-    FS: { sent: 0, replies: 0 },
-    CC: { sent: 0, replies: 0 },
-    HI: { sent: 0, replies: 0 },
+  const byList: Record<(typeof LISTS)[number], { sent: number; opens: number; replies: number }> = {
+    FS: { sent: 0, opens: 0, replies: 0 },
+    CC: { sent: 0, opens: 0, replies: 0 },
+    HI: { sent: 0, opens: 0, replies: 0 },
   };
 
   for (const row of rows) {
     const s = row.sent ?? 0;
     const o = row.opens ?? 0;
-    const c = row.clicks ?? 0;
     const r = row.replies ?? 0;
     sent += s;
     opens += o;
-    clicks += c;
     replies += r;
-
-    const date = row.snapshot_date;
-    const day = byDate.get(date) ?? { date, sent: 0, opens: 0, replies: 0 };
-    day.sent += s;
-    day.opens += o;
-    day.replies += r;
-    byDate.set(date, day);
 
     const list = row.list_type as (typeof LISTS)[number];
     if (byList[list]) {
       byList[list].sent += s;
+      byList[list].opens += o;
       byList[list].replies += r;
     }
   }
 
-  const daily = [...byDate.values()];
-  const lists = LISTS.filter((list) => byList[list].sent > 0).map((list) => ({
-    list,
-    sent: byList[list].sent,
-    replyRate: rate(byList[list].replies, byList[list].sent),
-  }));
-  const empty = sent === 0 && daily.length === 0;
+  const campaignLookups = await Promise.all(
+    linkedLists.map((list) => {
+      const id = campaignIdByList[list]?.trim();
+      if (!id) return Promise.all([Promise.resolve(null), Promise.resolve(null)]);
+      return Promise.all([
+        getCampaignInfo(id, instantlyAccount),
+        getCampaignOverview(id, startDate, endDate, instantlyAccount),
+      ]);
+    }),
+  );
+  const campaigns = linkedLists.map((list, i) => {
+    const [info, overview] = campaignLookups[i];
+    const metrics = byList[list];
+    const inRange = metrics.sent > 0;
+    return {
+      list,
+      name: info?.name || list,
+      info,
+      sent: metrics.sent,
+      opens: metrics.opens,
+      replies: metrics.replies,
+      bounces: inRange ? (overview?.bounces ?? 0) : 0,
+    };
+  });
+  const totalBounces = campaigns.reduce((sum, campaign) => sum + (campaign.sent > 0 ? campaign.bounces : 0), 0);
+  const empty = sent === 0;
+  const openRate = rate(opens, sent);
+  const replyRate = rate(replies, sent);
+  const bounceRate = rate(totalBounces, sent);
 
   return (
     <div>
@@ -106,10 +139,10 @@ export default async function PortalAnalytics({
           justifyContent: "space-between",
           gap: 16,
           flexWrap: "wrap",
-          marginBottom: empty ? 24 : 40,
+          marginBottom: 24,
         }}
       >
-        <h2 style={{ margin: 0 }}>Email analytics</h2>
+        <h2 style={{ margin: 0 }}>Email Analytics</h2>
         <nav className="portal-range" style={{ display: "flex", gap: 4 }} aria-label="Date range">
           {RANGES.map((n) => {
             const active = n === range;
@@ -140,96 +173,343 @@ export default async function PortalAnalytics({
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-            <StatCard label="Emails sent" value={sent} />
-            <StatCard label="Opens" value={opens} rate={rate(opens, sent)} />
-            <StatCard label="Replies" value={replies} rate={rate(replies, sent)} />
-            <StatCard label="Clicks" value={clicks} rate={rate(clicks, sent)} />
+          <div className="label" style={{ marginBottom: 8 }}>
+            Email performance
+          </div>
+          <div className="card" style={{ borderRadius: 12, display: "flex", flexWrap: "wrap" }}>
+            <StripCell label="Sent" last={false}>
+              <span className="mono" style={{ fontSize: 26, fontWeight: 300, color: "var(--ink)", lineHeight: 1.15 }}>
+                {formatCount(sent)}
+              </span>
+            </StripCell>
+            <StripCell label="Opens" last={false}>
+              <span className="mono" style={{ fontSize: 26, fontWeight: 300, color: "var(--ink)", lineHeight: 1.15 }}>
+                {formatCount(opens)}
+              </span>
+              <span style={{ fontSize: 13, color: "var(--sage)", marginLeft: 8 }}>{formatRate(openRate)}</span>
+            </StripCell>
+            <StripCell label="Replies" last={false}>
+              <span className="mono" style={{ fontSize: 26, fontWeight: 300, color: "var(--ink)", lineHeight: 1.15 }}>
+                {formatCount(replies)}
+              </span>
+              <span style={{ fontSize: 13, color: "var(--ash)", marginLeft: 8 }}>{formatRate(replyRate)}</span>
+            </StripCell>
+            <StripCell label="Bounces" last={false}>
+              <span className="mono" style={{ fontSize: 26, fontWeight: 300, color: "var(--ink)", lineHeight: 1.15 }}>
+                {formatCount(totalBounces)}
+              </span>
+            </StripCell>
+            <StripCell label="Bounce rate" last>
+              <span
+                className="mono"
+                style={{
+                  fontSize: 26,
+                  fontWeight: 300,
+                  color: bounceRate === null ? "var(--ink)" : "var(--amber)",
+                  lineHeight: 1.15,
+                }}
+              >
+                {formatRate(bounceRate)}
+              </span>
+            </StripCell>
           </div>
 
-          <div className="card" style={{ padding: "36px 32px", marginTop: 24 }}>
-            <TrendChart daily={daily} />
+          <div className="card" style={{ padding: "22px 24px", marginTop: 16 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--ash)",
+                marginBottom: 16,
+              }}
+            >
+              Funnel
+            </div>
+            <Funnel
+              sent={sent}
+              opens={opens}
+              replies={replies}
+              openRate={openRate}
+              replyRate={replyRate}
+            />
           </div>
 
-          {lists.length > 0 && (
-            <Section title="By list">
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    <th className="label" style={{ textAlign: "left", padding: "0 0 12px", fontWeight: 500 }}>
-                      List
-                    </th>
-                    <th className="label" style={{ textAlign: "right", padding: "0 0 12px", fontWeight: 500 }}>
-                      Sent
-                    </th>
-                    <th className="label" style={{ textAlign: "right", padding: "0 0 12px", fontWeight: 500 }}>
-                      Reply rate
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lists.map((row, i) => (
-                    <tr key={row.list}>
-                      <td
-                        className="mono"
-                        style={{
-                          padding: "16px 0",
-                          borderTop: i === 0 ? "1px solid var(--smoke)" : undefined,
-                          borderBottom: "1px solid var(--smoke)",
-                          color: "var(--ink)",
-                        }}
-                      >
-                        {row.list}
+          <div className="label" style={{ marginTop: 24, marginBottom: 8 }}>
+            By campaign
+          </div>
+          <div className="card" style={{ overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={thStyle("left")}>Campaign</th>
+                  <th style={thStyle("right")}>Sent</th>
+                  <th style={thStyle("right")}>Opens</th>
+                  <th style={thStyle("right")}>Replies</th>
+                  <th style={thStyle("right")}>Bounces</th>
+                  <th style={thStyle("right")}>Bounce rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaigns.map((campaign, i) => {
+                  const openPct = formatRate(rate(campaign.opens, campaign.sent));
+                  const replyPct = formatRate(rate(campaign.replies, campaign.sent));
+                  const bouncePct = formatRate(rate(campaign.bounces, campaign.sent));
+                  const last = i === campaigns.length - 1;
+                  return (
+                    <tr key={campaign.list}>
+                      <td style={tdStyle("left", last)}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                          <span
+                            style={{
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              color: "var(--ink)",
+                            }}
+                          >
+                            {campaign.name}
+                          </span>
+                          <CampaignChip info={campaign.info} />
+                        </span>
                       </td>
-                      <td
-                        className="mono"
-                        style={{
-                          padding: "16px 0",
-                          textAlign: "right",
-                          borderTop: i === 0 ? "1px solid var(--smoke)" : undefined,
-                          borderBottom: "1px solid var(--smoke)",
-                          color: "var(--ink)",
-                        }}
-                      >
-                        {row.sent.toLocaleString("en-US")}
+                      <td style={tdStyle("right", last)}>
+                        <Count value={campaign.sent} />
                       </td>
-                      <td
-                        className="mono"
-                        style={{
-                          padding: "16px 0",
-                          textAlign: "right",
-                          borderTop: i === 0 ? "1px solid var(--smoke)" : undefined,
-                          borderBottom: "1px solid var(--smoke)",
-                          color: "var(--ink)",
-                        }}
-                      >
-                        {formatRate(row.replyRate)}
+                      <td style={tdStyle("right", last)}>
+                        <Count value={campaign.opens} />
+                        <span style={{ color: "var(--ash)", fontSize: 13, marginLeft: 6 }}>{openPct}</span>
+                      </td>
+                      <td style={tdStyle("right", last)}>
+                        <Count value={campaign.replies} />
+                        <span style={{ color: "var(--ash)", fontSize: 13, marginLeft: 6 }}>{replyPct}</span>
+                      </td>
+                      <td style={tdStyle("right", last)}>
+                        <Count value={campaign.bounces} />
+                      </td>
+                      <td style={tdStyle("right", last)}>
+                        <span
+                          className="mono"
+                          style={{ color: campaign.sent === 0 ? "var(--ash)" : "var(--ink)" }}
+                        >
+                          {bouncePct}
+                        </span>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Section>
-          )}
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
+
+      <ComingSoon title="LinkedIn Activity">
+        LinkedIn analytics are coming soon. This will show connection and message activity once LinkedIn outreach is
+        connected.
+      </ComingSoon>
+      <ComingSoon title="Pixel Events">
+        Website visitor identification is coming soon. This will show identified visitors and events once the tracking
+        pixel is connected.
+      </ComingSoon>
     </div>
   );
 }
 
-function StatCard({ label, value, rate: rateValue }: { label: string; value: number; rate?: number | null }) {
+function StripCell({ label, last, children }: { label: string; last: boolean; children: ReactNode }) {
   return (
-    <div className="card" style={{ padding: 24, flex: "1 1 160px", minWidth: 140 }}>
-      <div className="label">{label}</div>
+    <div
+      style={{
+        flex: "1 1 140px",
+        padding: "18px 20px",
+        borderRight: last ? undefined : "1px solid var(--smoke)",
+        minWidth: 0,
+      }}
+    >
       <div
-        className="mono"
-        style={{ fontSize: 34, fontWeight: 300, color: "var(--ink)", lineHeight: 1.2, marginTop: 8 }}
+        style={{
+          fontSize: 11,
+          fontWeight: 500,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--ash)",
+        }}
       >
-        {value.toLocaleString("en-US")}
+        {label}
       </div>
-      {rateValue !== undefined && (
-        <div style={{ color: "var(--ash)", fontSize: 13, marginTop: 4 }}>{formatRate(rateValue)}</div>
-      )}
+      <div style={{ display: "flex", alignItems: "baseline", marginTop: 6, minWidth: 0 }}>{children}</div>
     </div>
+  );
+}
+
+function Funnel({
+  sent,
+  opens,
+  replies,
+  openRate,
+  replyRate,
+}: {
+  sent: number;
+  opens: number;
+  replies: number;
+  openRate: number | null;
+  replyRate: number | null;
+}) {
+  const openWidth = pctOfSent(opens, sent);
+  const replyWidth = pctOfSent(replies, sent);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <FunnelRow
+        name="Sent"
+        value={`${formatCount(sent)}`}
+        width={sent === 0 ? 0 : 100}
+        color="var(--ink)"
+      />
+      <FunnelRow
+        name="Opened"
+        value={`${formatCount(opens)} · ${formatRate(openRate)}`}
+        width={openWidth}
+        color="var(--brass)"
+      />
+      <FunnelRow
+        name="Replied"
+        value={`${formatCount(replies)} · ${formatRate(replyRate)}`}
+        width={replyWidth}
+        color="var(--sage)"
+        minVisible={replies > 0}
+      />
+    </div>
+  );
+}
+
+function FunnelRow({
+  name,
+  value,
+  width,
+  color,
+  minVisible,
+}: {
+  name: string;
+  value: string;
+  width: number;
+  color: string;
+  minVisible?: boolean;
+}) {
+  const showBar = width > 0 || minVisible;
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, marginBottom: 6 }}>
+        <span style={{ fontSize: 13, color: "var(--charcoal)" }}>{name}</span>
+        <span className="mono" style={{ fontSize: 13, color: "var(--ink)" }}>
+          {value}
+        </span>
+      </div>
+      <div style={{ height: 10 }}>
+        {showBar ? (
+          <div
+            style={{
+              height: 10,
+              width: `${width}%`,
+              minWidth: minVisible ? 3 : undefined,
+              background: color,
+              borderRadius: 2,
+            }}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CampaignChip({ info }: { info: { status: string | null } | null }) {
+  const status = info?.status ?? null;
+  let label = "NO DATA";
+  let color = "var(--ash)";
+  let border = "var(--smoke)";
+  if (info) {
+    if (status === "active") {
+      label = "ACTIVE";
+      color = "var(--sage)";
+      border = "var(--sage)";
+    } else if (status === "paused") {
+      label = "PAUSED";
+      color = "var(--amber)";
+      border = "var(--amber)";
+    } else if (status) {
+      label = status.replace(/_/g, " ");
+    } else {
+      label = "READY";
+    }
+  }
+  return (
+    <span
+      style={{
+        flexShrink: 0,
+        fontSize: 11,
+        fontWeight: 500,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        color,
+        border: `1px solid ${border}`,
+        borderRadius: 4,
+        padding: "1px 7px",
+        lineHeight: 1.4,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function Count({ value }: { value: number }) {
+  return (
+    <span className="mono" style={{ color: value === 0 ? "var(--ash)" : "var(--ink)" }}>
+      {formatCount(value)}
+    </span>
+  );
+}
+
+function thStyle(align: "left" | "right"): CSSProperties {
+  return {
+    textAlign: align,
+    padding: "12px 16px",
+    fontSize: 11,
+    fontWeight: 500,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "var(--ash)",
+    borderBottom: "1px solid var(--smoke)",
+  };
+}
+
+function tdStyle(align: "left" | "right", last = false): CSSProperties {
+  return {
+    textAlign: align,
+    padding: "14px 16px",
+    borderBottom: last ? undefined : "1px solid var(--smoke)",
+    fontSize: 14,
+  };
+}
+
+function ComingSoon({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Section title={title}>
+      <p
+        style={{
+          color: "var(--ash)",
+          textAlign: "center",
+          margin: 0,
+          padding: "24px 0",
+          maxWidth: 520,
+          marginLeft: "auto",
+          marginRight: "auto",
+          fontSize: 14,
+          lineHeight: 1.6,
+        }}
+      >
+        {children}
+      </p>
+    </Section>
   );
 }

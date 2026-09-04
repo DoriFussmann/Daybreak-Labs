@@ -1,14 +1,19 @@
 const BASE = "https://api.instantly.ai/api/v2";
 export type LeadPush = { email: string; first_name?: string; last_name?: string; company_name?: string };
+export type InstantlyAccount = "A" | "B";
 
-function instantlyHeaders() {
-  return { "Authorization": `Bearer ${process.env.INSTANTLY_API_KEY!}`, "Content-Type": "application/json" };
+function keyFor(account: InstantlyAccount = "A"): string | undefined {
+  return account === "B" ? process.env.INSTANTLY_API_KEY_B : process.env.INSTANTLY_API_KEY;
 }
 
-export async function addLeadToCampaign(campaignId: string, lead: LeadPush) {
+function instantlyHeaders(account: InstantlyAccount = "A") {
+  return { "Authorization": `Bearer ${keyFor(account)!}`, "Content-Type": "application/json" };
+}
+
+export async function addLeadToCampaign(campaignId: string, lead: LeadPush, account: InstantlyAccount = "A") {
   const res = await fetch(`${BASE}/leads`, {
     method: "POST",
-    headers: instantlyHeaders(),
+    headers: instantlyHeaders(account),
     body: JSON.stringify({
       campaign: campaignId,
       email: lead.email,
@@ -41,9 +46,9 @@ function campaignStatus(raw: unknown): string | null {
   return null;
 }
 
-export async function getCampaignInfo(campaignId: string): Promise<CampaignInfo | null> {
+export async function getCampaignInfo(campaignId: string, account: InstantlyAccount = "A"): Promise<CampaignInfo | null> {
   const id = campaignId.trim();
-  const key = process.env.INSTANTLY_API_KEY;
+  const key = keyFor(account);
   if (!id || !key) return null;
   try {
     const res = await fetch(`${BASE}/campaigns/${encodeURIComponent(id)}`, {
@@ -60,12 +65,12 @@ export async function getCampaignInfo(campaignId: string): Promise<CampaignInfo 
   }
 }
 
-export async function getCampaignName(campaignId: string): Promise<string | null> {
-  const info = await getCampaignInfo(campaignId);
+export async function getCampaignName(campaignId: string, account: InstantlyAccount = "A"): Promise<string | null> {
+  const info = await getCampaignInfo(campaignId, account);
   return info?.name ?? null;
 }
 
-export type DailyMetric = { date: string; sent: number; opens: number; clicks: number; replies: number };
+export type DailyMetric = { date: string; sent: number; opens: number; clicks: number; replies: number; bounces: number };
 
 function asCount(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -76,9 +81,10 @@ export async function getCampaignDailyAnalytics(
   campaignId: string,
   startDate: string,
   endDate: string,
+  account: InstantlyAccount = "A",
 ): Promise<DailyMetric[]> {
   const id = campaignId.trim();
-  const key = process.env.INSTANTLY_API_KEY;
+  const key = keyFor(account);
   if (!id || !key) return [];
   try {
     const params = new URLSearchParams({
@@ -94,12 +100,13 @@ export async function getCampaignDailyAnalytics(
     const data = await res.json();
     const rows = Array.isArray(data) ? data : [];
     return rows
-      .map((row: { date?: unknown; sent?: unknown; unique_opened?: unknown; unique_clicks?: unknown; unique_replies?: unknown }) => ({
+      .map((row: { date?: unknown; sent?: unknown; unique_opened?: unknown; unique_clicks?: unknown; unique_replies?: unknown; bounced?: unknown; bounced_count?: unknown }) => ({
         date: typeof row?.date === "string" ? row.date : "",
         sent: asCount(row?.sent),
         opens: asCount(row?.unique_opened),
         clicks: asCount(row?.unique_clicks),
         replies: asCount(row?.unique_replies),
+        bounces: asCount(row.bounced ?? row.bounced_count ?? 0),
       }))
       .filter((row: DailyMetric) => row.date);
   } catch {
@@ -107,3 +114,38 @@ export async function getCampaignDailyAnalytics(
   }
 }
 
+export type CampaignOverview = { sent: number; bounces: number };
+
+export async function getCampaignOverview(
+  campaignId: string,
+  startDate: string,
+  endDate: string,
+  account: InstantlyAccount = "A",
+): Promise<CampaignOverview | null> {
+  const id = campaignId.trim();
+  const key = keyFor(account);
+  if (!id || !key) return null;
+  try {
+    const params = new URLSearchParams({
+      campaign_id: id,
+      start_date: startDate,
+      end_date: endDate,
+    });
+    const res = await fetch(`${BASE}/campaigns/analytics/overview?${params}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const obj = (Array.isArray(data) ? data[0] : data) as
+      | { bounced_count?: unknown; bounced?: unknown; emails_sent_count?: unknown; sent?: unknown }
+      | undefined;
+    if (!obj) return null;
+    return {
+      sent: asCount(obj.emails_sent_count ?? obj.sent ?? 0),
+      bounces: asCount(obj.bounced_count ?? obj.bounced ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}

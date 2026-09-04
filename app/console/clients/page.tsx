@@ -20,7 +20,7 @@ export default async function ClientsPage() {
     <div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
           <div>
-            <h2>{isAdmin ? "Clients" : "Your clients"}</h2>
+            <h2>{isAdmin ? "Clients" : "Your Clients"}</h2>
             <p style={{ color: "var(--ash)", marginTop: 8, maxWidth: 680 }}>
               {isAdmin
                 ? "Zones, campaigns, and live status for each operator."

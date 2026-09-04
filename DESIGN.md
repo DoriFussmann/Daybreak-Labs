@@ -11,7 +11,8 @@ visual system is borrowed.
 - **No** gradients, glassmorphism, frosted panels, drop-shadow stacks, purple or electric blue, emoji, exclamation marks, countdown-urgency/scarcity language, or AI-forward/hype wording ("AI-powered", "supercharge", "unlock").
 - **Icons:** Lucide only, stroke width 1.5, never filled. 20px inline, 24px standalone.
 - **Dropdowns:** never a native `<select>` for an openable list. OS option menus break the system every time. Use `app/ui/dropdown.tsx` (`.dropdown` classes).
-- Uppercase is only for small labels (12px, 0.08em tracking). Everything else is sentence case.
+- Uppercase is only for small labels (12px, 0.08em tracking).
+- **Titles are Title Case.** Page titles, section titles, and nav labels capitalize principal words: Email Analytics, Email Performance, My Leads, LinkedIn Activity. Articles and prepositions of three letters or fewer stay lowercase unless first or last. Body copy, buttons, and helper text stay sentence case.
 
 ## Color tokens
 | Token | Hex | Use |
@@ -49,7 +50,8 @@ visual system is borrowed.
 - Tables: hairline smoke row borders, ash column labels (uppercase 12px), mono for numeric/ID columns.
 - Buttons: primary = ink bg + white text (500), hover ink-dark. Secondary/ghost = transparent + smoke border, hover border ink.
 - Status: sage / amber / cinnabar as text or 1px-bordered chips, never loud fills.
-- Metrics: ash uppercase label above, large light number (34px/300 ink) below.
+- Metrics: ash uppercase label above, large light number (34px/300 ink) below. On analytics overviews, fit five metrics in one row (`.metric-row` + `.metric-card`): Sent, Opens, Replies, Bounces, Bounce rate. Cards are equal width, compact padding (16×14), 26px/300 mono value, reserved caption line for the rate so the row stays even. Each campaign repeats that same five-card row under its Title Case name — do not wrap a campaign in a second large card.
+- Portal / console sidebar: 220px, labels visible by default. Collapse is icon-only (48px) via `PanelLeft` / `PanelLeftClose` (20px, stroke 1.5). Default is expanded. Persist the choice in `localStorage`. Active item: white fill + 3px brass inset. Hover: `rgba(26,26,46,.045)`. Disabled items stay ash, no link.
 - Dropdowns (required — do not invent another version):
   - Trigger matches `.input`: 44px tall, white, 1px smoke, 6px radius, 16px/400 charcoal, 14px left padding.
   - Chevron is Lucide `ChevronDown`, 16px, stroke 1.5, ash, 12px from the right. Never the OS arrow. Rotates 180° when open (150ms).
@@ -62,7 +64,7 @@ visual system is borrowed.
   - Implement with `app/ui/dropdown.tsx`. Do not restyle `<select>`.
 
 ## Copy voice
-Measured, precise, calm. Sentence case. Say what a control does ("Push to Instantly", "Compute and assign").
+Measured, precise, calm. Titles are Title Case (Email Analytics, Email Performance). Buttons, body, and errors stay sentence case. Say what a control does ("Push to Instantly", "Compute and assign").
 No exclamation marks, no hype, no "please/simply/just". Errors state what happened and how to fix it.
 
 ---
@@ -131,6 +133,23 @@ a:hover{opacity:.7}
   font-family:inherit;font-size:15px;font-weight:400;color:var(--charcoal);text-align:left;cursor:pointer}
 .dropdown-option:hover{background:rgba(26,26,46,.045);color:var(--ink)}
 .dropdown-option[data-active="true"]{color:var(--ink);font-weight:500;box-shadow:inset 3px 0 0 var(--brass)}
+.portal-nav a{font-weight:inherit}
+.portal-nav a:hover{opacity:1}
+.portal-range a:hover{opacity:1}
+.portal-nav a[data-active="false"]:hover{background:rgba(26,26,46,.045);color:var(--ink)}
+.portal-nav-toggle{
+  display:flex;align-items:center;justify-content:center;
+  width:32px;height:32px;padding:0;border:none;border-radius:8px;
+  background:transparent;color:var(--slate);cursor:pointer;flex-shrink:0;
+  transition:background .15s ease,color .15s ease}
+.portal-nav-toggle:hover{background:rgba(26,26,46,.045);color:var(--ink)}
+.metric-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.metric-card{padding:16px 14px}
+.metric-card .metric-value{font-size:26px;font-weight:300;color:var(--ink);line-height:1.15;margin-top:6px}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media (max-width:768px){.metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 ```
 

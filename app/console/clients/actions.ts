@@ -37,6 +37,7 @@ export async function saveClientDetails(
     name: string;
     companyName: string;
     clientType: string;
+    instantlyAccount: string;
     keyContact: string;
     keyContactEmail: string;
     phone: string;
@@ -56,12 +57,14 @@ export async function saveClientDetails(
     .eq("id", clientId)
     .maybeSingle();
   const nextEmail = emptyToNull(fields.keyContactEmail);
+  const instantly_account = fields.instantlyAccount === "B" ? "B" : "A";
   const { error } = await db
     .from("clients")
     .update({
       name,
       company_name: emptyToNull(fields.companyName),
       client_type: emptyToNull(fields.clientType),
+      instantly_account,
       key_contact: emptyToNull(fields.keyContact),
       key_contact_email: nextEmail,
       phone: emptyToNull(fields.phone),
@@ -73,7 +76,7 @@ export async function saveClientDetails(
     .eq("id", clientId);
   if (error) {
     throw new Error(
-      error.code === "PGRST204" || /company_name|client_type|schema cache/i.test(error.message)
+      error.code === "PGRST204" || /company_name|client_type|instantly_account|schema cache/i.test(error.message)
         ? "Run 002_client_details.sql in the Supabase SQL editor to add client profile columns."
         : error.message,
     );

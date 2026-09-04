@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { signOut } from "@/app/login/actions";
-import { PortalNav } from "./portal-nav";
+import { PortalSidebar } from "./portal-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -56,10 +56,7 @@ export default async function PortalLayout({ children }: { children: React.React
           gap: 40,
         }}
       >
-        <aside style={{ width: 220, flexShrink: 0 }}>
-          <div className="label" style={{ marginBottom: 16 }}>{displayName}</div>
-          <PortalNav />
-        </aside>
+        <PortalSidebar displayName={displayName} />
         <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
       </div>
     </div>

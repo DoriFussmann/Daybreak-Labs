@@ -121,7 +121,7 @@ export default async function ConsoleAnalytics({
 
   return (
     <div>
-      <h2 style={{ margin: 0 }}>Email analytics</h2>
+      <h2 style={{ margin: 0 }}>Email Analytics</h2>
 
         <div
           style={{
@@ -177,7 +177,7 @@ export default async function ConsoleAnalytics({
             </div>
 
             {campaigns.length > 0 && (
-              <Section title="By campaign">
+              <Section title="By Campaign">
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
