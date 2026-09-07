@@ -4,6 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCampaignInfo } from "@/lib/instantly";
 import { getHeyReachCampaignName } from "@/lib/heyreach";
 import { getPost4MeAccountName } from "@/lib/post4me";
+import { asLine, MAX_CLIENT_NOTES } from "@/lib/post4me-lines";
+import { LinesEditor } from "@/app/ui/lines-editor";
+import { saveClientNotes } from "./actions";
 import {
   Cols,
   Field,
@@ -49,6 +52,10 @@ export default async function PortalAccount() {
     .from("client_campaigns")
     .select("channel, list_type, external_campaign_id")
     .eq("client_id", id);
+  const { data: noteRows } = await db.from("client_post_notes").select("*").eq("client_id", id);
+  const notes = (noteRows ?? [])
+    .map((row) => asLine(row as Record<string, unknown>))
+    .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id));
 
   const emailCampaigns = (campaigns ?? []).filter((c) => c.channel === "email");
   const linkedCampaigns = (campaigns ?? []).filter((c) => c.channel === "linkedin");
@@ -153,6 +160,18 @@ export default async function PortalAccount() {
             />
           ))}
         </Cols>
+      </Section>
+
+      <Section title="LinkedIn Posts | Notes to Add">
+        <p style={{ color: "var(--ash)", margin: "0 0 16px", maxWidth: 680 }}>
+          Up to {MAX_CLIENT_NOTES} notes the generator can mention. These appear on your operator record.
+        </p>
+        <LinesEditor
+          initial={notes}
+          max={MAX_CLIENT_NOTES}
+          addLabel="Add note"
+          save={saveClientNotes.bind(null, id)}
+        />
       </Section>
     </>
   );

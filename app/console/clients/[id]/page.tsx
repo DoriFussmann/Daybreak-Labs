@@ -2,11 +2,14 @@ import { notFound, redirect } from "next/navigation";
 import { canAccessClient, homePath, requireSession } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addTerritory, removeTerritory, saveCampaigns, saveClientDetails, saveLinked } from "../actions";
+import { saveClientDirections } from "../../post4me-actions";
+import { asLine } from "@/lib/post4me-lines";
 import { BackLink } from "../../back-link";
 import { LiveToggle } from "../../live-toggle";
 import { DangerZone } from "../danger-zone";
 import { Dropdown } from "@/app/ui/dropdown";
 import { ClientTypeField } from "./client-type-field";
+import { LinesEditor } from "@/app/ui/lines-editor";
 import {
   Cols,
   Field,
@@ -64,6 +67,17 @@ export default async function ClientZone({
     website: extras?.website ?? null,
     site_pixel: extras?.site_pixel ?? null,
   };
+
+  const [{ data: directionRows }, { data: noteRows }] = await Promise.all([
+    db.from("client_post_directions").select("*").eq("client_id", id),
+    db.from("client_post_notes").select("*").eq("client_id", id),
+  ]);
+  const directions = (directionRows ?? [])
+    .map((row) => asLine(row as Record<string, unknown>))
+    .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id));
+  const notes = (noteRows ?? [])
+    .map((row) => asLine(row as Record<string, unknown>))
+    .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id));
 
   const { data: campaigns } = await db
     .from("client_campaigns")
@@ -531,6 +545,48 @@ export default async function ClientZone({
             </form>
           ) : null}
         </Section>
+
+        {isAdmin ? (
+          <Section title="Client LinkedIn Posts Direction | Direction to Add">
+            <p style={{ color: "var(--ash)", margin: "0 0 16px", maxWidth: 680 }}>
+              Positioning lines the generator honors. The client never sees these.
+            </p>
+            <LinesEditor
+              initial={directions}
+              addLabel="Add line"
+              save={saveClientDirections.bind(null, id)}
+            />
+          </Section>
+        ) : null}
+
+        {isAdmin ? (
+          <Section title="Client Input | LinkedIn Notes">
+            <p style={{ color: "var(--ash)", margin: "0 0 16px", maxWidth: 680 }}>
+              What the client wrote. Read-only here.
+            </p>
+            {notes.length === 0 ? (
+              <p style={{ color: "var(--ash)", margin: 0 }}>No client notes yet.</p>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {notes.map((note) => (
+                  <div
+                    key={note.id}
+                    style={{
+                      padding: "12px 14px",
+                      border: "1px solid var(--smoke)",
+                      borderRadius: 6,
+                      background: "var(--parchment)",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    {note.body}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        ) : null}
 
       {isAdmin ? <DangerZone clientId={client.id} clientName={client.name} /> : null}
     </div>

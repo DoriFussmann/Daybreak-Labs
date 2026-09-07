@@ -25,6 +25,8 @@ a:hover{opacity:.7}
 .btn-danger:hover{background:#a33025}
 .btn-danger:disabled:hover{background:var(--cinnabar)}
 .card{background:var(--white);border:1px solid var(--smoke);border-radius:10px}
+a.card{color:inherit;font-weight:400}
+a.card:hover{opacity:1;border-color:var(--ink)}
 .input{width:100%;height:44px;padding:0 14px;background:#fff;border:1px solid var(--smoke);
   border-radius:6px;font-size:16px;color:var(--charcoal);transition:border-color .15s ease}
 .input:focus{outline:none;border-color:var(--brass)}
@@ -47,6 +49,13 @@ select.input{
 .dropdown-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dropdown-trigger:hover{border-color:var(--ink)}
 .dropdown-trigger:focus,.dropdown-trigger[data-open="true"]{outline:none;border-color:var(--brass)}
+.dropdown-trigger-nav{
+  height:auto;min-height:0;padding:8px 40px 8px 12px;border:none;border-radius:8px;
+  background:transparent;font-size:14px;color:var(--slate);gap:10px}
+.dropdown-trigger-nav:hover{border:none;background:rgba(26,26,46,.045);color:var(--ink)}
+.dropdown-trigger-nav:focus,.dropdown-trigger-nav[data-open="true"]{border:none;outline:none}
+.dropdown-trigger-nav[data-active="true"]{
+  background:var(--white);color:var(--ink);font-weight:500;box-shadow:inset 3px 0 0 var(--brass)}
 .dropdown-chevron{position:absolute;right:12px;color:var(--ash);flex-shrink:0;transition:transform .15s ease}
 .dropdown-trigger[data-open="true"] .dropdown-chevron{transform:rotate(180deg)}
 .dropdown-menu{

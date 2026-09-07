@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 export type DropdownOption = { value: string; label: string };
@@ -10,6 +10,10 @@ export function Dropdown({
   options,
   value,
   defaultValue,
+  placeholder,
+  triggerLabel,
+  leading,
+  variant = "input",
   "aria-label": ariaLabel,
   onChange,
 }: {
@@ -17,6 +21,10 @@ export function Dropdown({
   options: DropdownOption[];
   value?: string;
   defaultValue?: string;
+  placeholder?: string;
+  triggerLabel?: string;
+  leading?: ReactNode;
+  variant?: "input" | "nav";
   "aria-label"?: string;
   onChange?: (value: string) => void;
 }) {
@@ -25,7 +33,9 @@ export function Dropdown({
   const [open, setOpen] = useState(false);
   const [uncontrolled, setUncontrolled] = useState(defaultValue ?? value ?? options[0]?.value ?? "");
   const selected = value ?? uncontrolled;
-  const current = options.find((o) => o.value === selected) ?? options[0];
+  const current = options.find((o) => o.value === selected);
+  const triggerText = triggerLabel ?? current?.label ?? placeholder ?? options[0]?.label ?? "";
+  const hasSelection = Boolean(current);
 
   useEffect(() => {
     if (!open) return;
@@ -54,15 +64,17 @@ export function Dropdown({
       {name ? <input type="hidden" name={name} value={selected} /> : null}
       <button
         type="button"
-        className="dropdown-trigger"
+        className={variant === "nav" ? "dropdown-trigger dropdown-trigger-nav" : "dropdown-trigger"}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={id}
         data-open={open ? "true" : "false"}
+        data-active={variant === "nav" && hasSelection ? "true" : "false"}
         onClick={() => setOpen((v) => !v)}
       >
-        <span>{current?.label ?? ""}</span>
+        {leading}
+        <span>{triggerText}</span>
         <ChevronDown className="dropdown-chevron" size={16} strokeWidth={1.5} aria-hidden />
       </button>
       {open && (

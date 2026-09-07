@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Building2, Mail, MessagesSquare, PanelLeft, PanelLeftClose, Share2, Users } from "lucide-react";
+import { Activity, Building2, Mail, MessagesSquare, PanelLeft, PanelLeftClose, PenLine, Share2, Users } from "lucide-react";
 
 const ITEMS = [
   { href: "/portal/leads", label: "My Leads", icon: Users },
+  { href: "/portal/post4me", label: "Post4Me", icon: PenLine },
   { href: "/portal/account", label: "Account", icon: Building2 },
   { href: "/portal/analytics", label: "Email Analytics", icon: Mail },
   { href: null, label: "LinkedIn Analytics", icon: Share2 },
