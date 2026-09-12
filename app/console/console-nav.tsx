@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, BarChart3, LayoutDashboard, Megaphone, MessagesSquare, PenLine, Users } from "lucide-react";
+import { Activity, BarChart3, ClipboardList, LayoutDashboard, Megaphone, MessagesSquare, PenLine, Users } from "lucide-react";
 import { Dropdown } from "@/app/ui/dropdown";
 
 const ITEMS = [
   { href: "/console", label: "Operations", icon: LayoutDashboard },
   { href: "/console/clients", label: "Clients", icon: Users },
+  { href: "/console/onboarding", label: "Onboarding", icon: ClipboardList },
   { href: "/console/analytics", label: "Analytics", icon: BarChart3 },
   { href: null, label: "Campaigns", icon: Megaphone },
   { href: null, label: "Communications", icon: MessagesSquare },
@@ -47,7 +48,7 @@ export function ConsoleNav() {
 
   return (
     <nav className="portal-nav" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {ITEMS.slice(0, 2).map((item) =>
+      {ITEMS.slice(0, 3).map((item) =>
         item.href ? (
           <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} pathname={pathname} />
         ) : null,
@@ -63,7 +64,7 @@ export function ConsoleNav() {
         onChange={(href) => router.push(href)}
       />
 
-      {ITEMS.slice(2).map((item) => {
+      {ITEMS.slice(3).map((item) => {
         const Icon = item.icon;
         if (!item.href) {
           return (

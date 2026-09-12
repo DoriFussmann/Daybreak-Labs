@@ -9,6 +9,7 @@ import { LiveToggle } from "../../live-toggle";
 import { DangerZone } from "../danger-zone";
 import { Dropdown } from "@/app/ui/dropdown";
 import { ClientTypeField } from "./client-type-field";
+import { OnboardingPanel } from "./onboarding-panel";
 import { LinesEditor } from "@/app/ui/lines-editor";
 import {
   Cols,
@@ -197,6 +198,8 @@ export default async function ClientZone({
             <StatusBadge label={client.is_live ? "Live" : "Paused"} tone={client.is_live ? "ok" : "off"} />
           )}
         </div>
+
+        {isAdmin ? <OnboardingPanel clientId={id} /> : null}
 
         <form action={isAdmin ? onSaveDetails : undefined}>
           <Section
