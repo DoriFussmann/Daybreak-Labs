@@ -6,6 +6,8 @@ import { assertAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { newToken } from "@/lib/onboarding";
 
+const STANDING_LABEL = "standing-intake";
+
 async function baseUrl() {
   const env = process.env.NEXT_PUBLIC_APP_URL;
   if (env) return env.replace(/\/$/, "");
@@ -15,21 +17,28 @@ async function baseUrl() {
   return host ? `${proto}://${host}` : "";
 }
 
-// Create a fresh intake link for Jay (not yet tied to a client).
-export async function createIntakeToken(label?: string): Promise<{ url: string }> {
+// The one permanent intake link Jay reuses forever. Created once, then reused.
+export async function getStandingIntakeUrl(): Promise<{ url: string }> {
   await assertAdmin();
   const db = createAdminClient();
-  const token = newToken();
-  await db.from("onboarding_tokens").insert({
-    token,
-    kind: "intake",
-    label: label?.trim() || null,
-  });
-  revalidatePath("/console/onboarding");
+  const { data: existing } = await db
+    .from("onboarding_tokens")
+    .select("token")
+    .eq("kind", "intake")
+    .eq("label", STANDING_LABEL)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  let token = existing?.token as string | undefined;
+  if (!token) {
+    token = newToken();
+    await db.from("onboarding_tokens").insert({ token, kind: "intake", label: STANDING_LABEL });
+  }
   return { url: `${await baseUrl()}/intake/${token}` };
 }
 
-// Create (or reuse) the client's onboarding link.
+// Create (or reuse) the client's onboarding link — unique per client.
 export async function getOrCreateOnboardingToken(clientId: string): Promise<{ url: string }> {
   await assertAdmin();
   const db = createAdminClient();

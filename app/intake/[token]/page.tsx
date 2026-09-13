@@ -21,25 +21,21 @@ export default async function IntakePage({ params }: { params: Promise<{ token: 
   const db = createAdminClient();
   const { data: tok } = await db
     .from("onboarding_tokens")
-    .select("token, kind, used_at, expires_at")
+    .select("token, kind, expires_at")
     .eq("token", token)
     .maybeSingle();
 
+  // Permanent, reusable link: valid as long as it exists, is an intake link, and hasn't expired.
   const invalid =
     !tok ||
     tok.kind !== "intake" ||
-    Boolean(tok.used_at) ||
     (tok.expires_at ? new Date(tok.expires_at) < new Date() : false);
 
   if (invalid) {
     return (
       <Shell>
         <h1 style={{ margin: 0 }}>Link unavailable</h1>
-        <p style={{ color: "var(--ash)", marginTop: 12 }}>
-          {tok?.used_at
-            ? "This intake link has already been used. Ask for a fresh one."
-            : "This link is not valid or has expired."}
-        </p>
+        <p style={{ color: "var(--ash)", marginTop: 12 }}>This link is not valid or has expired.</p>
       </Shell>
     );
   }
@@ -49,7 +45,7 @@ export default async function IntakePage({ params }: { params: Promise<{ token: 
       <h1 style={{ margin: 0 }}>New Client Intake</h1>
       <p style={{ color: "var(--ash)", marginTop: 12, lineHeight: 1.7 }}>
         Fill in whatever you already know. Leave the rest blank — the client completes it later. Nothing here is shown to
-        the client except where noted.
+        the client except where noted. You can submit as many clients as you like from this same link.
       </p>
       <IntakeForm token={token} />
     </Shell>

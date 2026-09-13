@@ -9,14 +9,27 @@ export function IntakeForm({ token }: { token: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [formKey, setFormKey] = useState(0); // bump to reset the form fields
 
   if (done) {
     return (
       <div className="card" style={{ padding: "36px 32px", marginTop: 32 }}>
         <h3 style={{ margin: 0 }}>Intake received</h3>
         <p style={{ color: "var(--ash)", marginTop: 12, lineHeight: 1.7 }}>
-          Thanks — this client is now in the system. You&rsquo;ll get the client-ready email and links back shortly.
+          Thanks — this client is now in the system. You can add another whenever you&rsquo;re ready.
         </p>
+        <button
+          className="btn"
+          type="button"
+          style={{ marginTop: 20 }}
+          onClick={() => {
+            setDone(false);
+            setError(null);
+            setFormKey((k) => k + 1);
+          }}
+        >
+          Submit another client
+        </button>
       </div>
     );
   }
@@ -31,7 +44,7 @@ export function IntakeForm({ token }: { token: string }) {
   }
 
   return (
-    <form action={onSubmit} style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 20 }}>
+    <form key={formKey} action={onSubmit} style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 20 }}>
       {INTAKE_FIELDS.map((field) => (
         <div key={field.key}>
           <div className="label" style={{ marginBottom: 8 }}>{field.label}</div>
