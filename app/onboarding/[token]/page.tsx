@@ -4,15 +4,28 @@ import { OnboardingForm } from "./onboarding-form";
 
 export const dynamic = "force-dynamic";
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div style={{ minHeight: "100vh", background: "#FFFFFF" }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "64px 24px" }}>
-        <div style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 40 }}>
-          InMarketLabs
+      <div style={{ height: 64, borderBottom: "1px solid var(--smoke)", background: "#FFFFFF" }}>
+        <div
+          style={{
+            maxWidth: 1160,
+            height: "100%",
+            margin: "0 auto",
+            padding: "0 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em" }}>
+            InMarketLabs
+          </span>
+          <span style={{ fontSize: 13, color: "var(--ash)" }}>Franchisee Candidate Development · National</span>
         </div>
-        {children}
       </div>
+      <div style={{ maxWidth: wide ? 1160 : 640, margin: "0 auto", padding: "0 24px" }}>{children}</div>
     </div>
   );
 }
@@ -36,8 +49,10 @@ export default async function OnboardingPage({ params }: { params: Promise<{ tok
   if (invalid) {
     return (
       <Shell>
-        <h1 style={{ margin: 0 }}>Link unavailable</h1>
-        <p style={{ color: "var(--ash)", marginTop: 12 }}>This onboarding link is not valid or has expired.</p>
+        <div style={{ padding: "64px 0" }}>
+          <h1 style={{ margin: 0 }}>Link unavailable</h1>
+          <p style={{ color: "var(--ash)", marginTop: 12 }}>This onboarding link is not valid or has expired.</p>
+        </div>
       </Shell>
     );
   }
@@ -46,28 +61,22 @@ export default async function OnboardingPage({ params }: { params: Promise<{ tok
   if (!client) {
     return (
       <Shell>
-        <h1 style={{ margin: 0 }}>Link unavailable</h1>
-        <p style={{ color: "var(--ash)", marginTop: 12 }}>We couldn&rsquo;t find this record.</p>
+        <div style={{ padding: "64px 0" }}>
+          <h1 style={{ margin: 0 }}>Link unavailable</h1>
+          <p style={{ color: "var(--ash)", marginTop: 12 }}>We couldn&rsquo;t find this record.</p>
+        </div>
       </Shell>
     );
   }
 
-  // Record first open (once) and notify the operator.
   if (!client.onboarding_opened_at) {
     await db.from("clients").update({ onboarding_opened_at: new Date().toISOString() }).eq("id", client.id);
     await notifyOnboarding("client_opened", client);
   }
 
-  const alreadySigned = Boolean(client.signed_at);
-
   return (
-    <Shell>
-      <h1 style={{ margin: 0 }}>Welcome{client.key_contact ? `, ${client.key_contact}` : ""}</h1>
-      <p style={{ color: "var(--ash)", marginTop: 12, lineHeight: 1.7 }}>
-        A couple of steps to get your program built: confirm your details, review and sign the service order, and complete
-        payment. Anything already filled in was set up for you — leave it as is unless it needs changing.
-      </p>
-      <OnboardingForm token={token} client={client} alreadySigned={alreadySigned} />
+    <Shell wide>
+      <OnboardingForm token={token} client={client} alreadySigned={Boolean(client.signed_at)} />
     </Shell>
   );
 }
