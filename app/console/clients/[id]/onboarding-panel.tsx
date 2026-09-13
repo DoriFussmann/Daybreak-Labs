@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { Check, Circle } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { onboardingStage, levelLabel } from "@/lib/onboarding";
 import { StatusBadge } from "../client-fields";
@@ -71,25 +72,21 @@ export async function OnboardingPanel({ clientId }: { clientId: string }) {
             key={item.label}
             style={{
               padding: "10px 12px",
-              border: "1px solid var(--smoke)",
+              border: item.done ? "1px solid var(--sage)" : "1px solid var(--smoke)",
               borderRadius: 6,
               fontSize: 13,
               color: item.done ? "var(--ink)" : "var(--ash)",
+              background: item.done ? "rgba(58,125,94,.08)" : "transparent",
               display: "flex",
               alignItems: "center",
               gap: 8,
             }}
           >
-            <span
-              aria-hidden
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: item.done ? "var(--sage)" : "var(--smoke)",
-                flexShrink: 0,
-              }}
-            />
+            {item.done ? (
+              <Check size={16} strokeWidth={1.5} color="var(--sage)" aria-hidden style={{ flexShrink: 0 }} />
+            ) : (
+              <Circle size={16} strokeWidth={1.5} color="var(--smoke)" aria-hidden style={{ flexShrink: 0 }} />
+            )}
             {item.label}
           </div>
         ))}

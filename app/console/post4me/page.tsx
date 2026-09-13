@@ -110,7 +110,7 @@ export default async function PostsGeneratorPage({
                       padding: "12px 14px",
                       border: "1px solid var(--smoke)",
                       borderRadius: 6,
-                      background: "var(--parchment)",
+                      background: "#F4F5F6",
                       whiteSpace: "pre-wrap",
                       lineHeight: 1.7,
                     }}

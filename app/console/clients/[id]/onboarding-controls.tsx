@@ -139,7 +139,7 @@ export function OnboardingControls({
                 padding: "10px 14px",
                 border: "1px solid var(--smoke)",
                 borderRadius: 6,
-                background: "var(--parchment)",
+                background: "#F4F5F6",
                 maxWidth: 480,
                 overflow: "hidden",
                 textOverflow: "ellipsis",

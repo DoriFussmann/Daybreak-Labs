@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", background: "var(--parchment)" }}>
+    <div style={{ minHeight: "100vh", background: "#FFFFFF" }}>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "64px 24px" }}>
         <div style={{ fontSize: 20, fontWeight: 300, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 40 }}>
           InMarketLabs

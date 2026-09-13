@@ -23,7 +23,7 @@ export function StandingIntake({ url }: { url: string }) {
           padding: "10px 14px",
           border: "1px solid var(--smoke)",
           borderRadius: 6,
-          background: "var(--parchment)",
+          background: "#F4F5F6",
         }}
       >
         <span

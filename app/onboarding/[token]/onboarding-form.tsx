@@ -40,7 +40,7 @@ function LockedField({ label, value }: { label: string; value: string }) {
           padding: "0 14px",
           border: "1px solid var(--smoke)",
           borderRadius: 6,
-          background: "var(--parchment)",
+          background: "#F4F5F6",
           color: value ? "var(--ink)" : "var(--ash)",
           fontSize: 14,
         }}

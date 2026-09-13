@@ -8,7 +8,7 @@ export function ReadValue({ children, empty }: { children: React.ReactNode; empt
         padding: "0 14px",
         border: "1px solid var(--smoke)",
         borderRadius: 6,
-        background: "var(--parchment)",
+        background: "#F4F5F6",
         color: empty ? "var(--ash)" : "var(--ink)",
         fontSize: 14,
         overflow: "hidden",
