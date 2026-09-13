@@ -18,9 +18,7 @@ export async function OnboardingPanel({ clientId }: { clientId: string }) {
   const { data: c } = await db
     .from("clients")
     .select(
-      "id, name, company_name, key_contact, second_contact, level, invoice_url, paid, " +
-        "intake_submitted_at, ready_at, sent_at, onboarding_opened_at, assets_submitted_at, " +
-        "signed_at, signature_name, terms_agreed_at",
+      "id, name, company_name, key_contact, second_contact, level, invoice_url, paid, intake_submitted_at, ready_at, sent_at, onboarding_opened_at, assets_submitted_at, signed_at, signature_name, terms_agreed_at",
     )
     .eq("id", clientId)
     .maybeSingle();

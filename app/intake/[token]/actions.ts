@@ -6,7 +6,7 @@ import { INTAKE_FIELDS, type FieldSource } from "@/lib/onboarding";
 
 type Result = { ok: true } | { ok: false; message: string };
 
-const CLIENT_COLUMNS = new Set(INTAKE_FIELDS.map((f) => f.key));
+const CLIENT_COLUMNS = new Set<string>(INTAKE_FIELDS.map((f) => f.key));
 
 export async function submitIntake(token: string, formData: FormData): Promise<Result> {
   const db = createAdminClient();
